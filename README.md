@@ -1,6 +1,6 @@
 # sounding
 
-TODO: Write a description here
+A library for audio waveform manipulation
 
 ## Installation
 
@@ -9,7 +9,7 @@ TODO: Write a description here
    ```yaml
    dependencies:
      sounding:
-       github: your-github-user/sounding
+       github: aprildolly/sounding
    ```
 
 2. Run `shards install`
@@ -36,4 +36,4 @@ TODO: Write development instructions here
 
 ## Contributors
 
-- [April Dolly](https://github.com/your-github-user) - creator and maintainer
+- [April Dolly](https://github.com/aprildolly) - creator and maintainer
