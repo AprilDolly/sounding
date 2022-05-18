@@ -1,0 +1,13 @@
+name: sounding
+version: 0.1.0
+
+authors:
+  - April Dolly <aprildolly@mail.com>
+
+dependencies:
+  soundfile:
+    github: skinnyjames-forks/soundfile
+
+crystal: 1.3.2
+
+license: GNU GPL
