@@ -4,7 +4,8 @@
 require "soundfile"
 include SoundFile
 
-require "signal_processing"
+require "./signal_processing"
+require "./rubberband"
 # require "sampledata"
 require "uuid"
 require "file_utils"
