@@ -1,6 +1,0 @@
----
-version: 1.0
-shards:
-  soundfile:
-    git: https://github.com/skinnyjames-forks/soundfile.git
-    version: 0.1.0+git.commit.f97b010e57e27ca01358cc4f22dba609e8213170
