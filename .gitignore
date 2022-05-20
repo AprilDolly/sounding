@@ -2,6 +2,8 @@
 /lib/
 /bin/
 /.shards/
+/lib
+lib
 *.dwarf
 sum_test.wav
 concat_test.wav
