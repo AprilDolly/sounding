@@ -121,11 +121,20 @@ module Sounding
 
     # superimposition
     def +(sound : Sound)
+      input_slice=sound.samples
       if sound.channels != @info.channels
         # TODO: implement addition of samples with multiple channel counts
         raise "Cannot add 2 sounds with different channel counts."
       end
-      return Sound.new(add_slices(@samples, sound.samples).clone, @info)
+      if sound.samplerate>@info.samplerate
+        #new sound has a larger samplerate, resample this one to be larger
+        @samples = slice_resample(@samples, @info.channels, @info.samplerate, sound.samplerate)
+        @info.samplerate = sound.samplerate
+      elsif sound.samplerate<@info.samplerate
+        #self has larger samplerate, change the input sound's samplerate
+        input_slice = slice_resample(input_slice, sound.channels, sound.samplerate, @info.samplerate)
+      end
+      return Sound.new(add_slices(@samples, input_slice).clone, @info)
     end
 
     # concatenation
@@ -134,7 +143,16 @@ module Sounding
         # TODO: implement addition of samples with multiple channel counts
         raise "Cannot add 2 sounds with different channel counts."
       end
-      @samples = concatenate_slices(@samples, sound.samples)
+      input_slice=sound.samples
+      if sound.samplerate>@info.samplerate
+        #new sound has a larger samplerate, resample this one to be larger
+        @samples = slice_resample(@samples, @info.channels, @info.samplerate, sound.samplerate)
+        @info.samplerate = sound.samplerate
+      elsif sound.samplerate<@info.samplerate
+        #self has larger samplerate, change the input sound's samplerate
+        input_slice = slice_resample(input_slice, sound.channels, sound.samplerate, @info.samplerate)
+      end
+      @samples = concatenate_slices(@samples, input_slice)
     end
 
     #########################
