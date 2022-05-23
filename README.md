@@ -16,7 +16,7 @@ A library for audio waveform manipulation
 
 3. Install libsndfile development files. The package name is usually `libsndfile1-dev`
 
-4. Install rubberband. You can either get the binaries [here](https://breakfastquay.com/rubberband/) or install `rubberband-cli` via your package manager.
+4. Install rubberband if you want to use the pitch shifting or time stretching capabilities. You can either get the binaries [here](https://breakfastquay.com/rubberband/) or install `rubberband-cli` via your package manager.
 
 ## Usage
 

@@ -1,12 +1,10 @@
 # TODO: Write documentation for `Sounding`
-# TODO: Reduce the reliance on nested arrays for sound processing due to the insane amount of memory they take up
 
 require "soundfile"
 include SoundFile
 
 require "./signal_processing"
 require "./rubberband"
-# require "sampledata"
 require "uuid"
 require "file_utils"
 
@@ -14,28 +12,28 @@ module Sounding
   VERSION = "0.1.0"
   INT_MAX = 2147483647
 
-  #  #function for using the rubberband CLI to perform operations on Sound objects
-  #  def rubberband_temp(sound : Sound,args : Array(String))
-  #    begin
-  #      rubberband_cli_wrapper("","")
-  #      id=UUID.random()
-  #      in_path="#{TMPFILE_DIRECTORY}/#{id}_in.wav"
-  #      out_path="#{TMPFILE_DIRECTORY}/#{id}_out.wav"
-  #      sound.write(in_path)
-  #      rubberband_cli_wrapper(in_path,out_path,args)
-  #      sound_out=Sound.from_file(out_path)
-  #      FileUtils.rm(in_path)
-  #      FileUtils.rm(out_path)
-  #      return sound_out
-  #    rescue ex
-  #      if ex.message.to_s.includes? "Error executing process"
-  #        puts "WARNING: rubberband could not be found. Please make sure it is installed, or is located in your system $PATH"
-  #      else
-  #        puts ex.message
-  #      end
-  #      return sound
-  #    end
-  #  end
+  #function for using the rubberband CLI to perform operations on Sound objects
+  def rubberband_temp(sound : Sound,args : Array(String))
+    begin
+      rubberband_cli_wrapper("","")
+      id=UUID.random()
+      in_path="#{TMPFILE_DIRECTORY}/#{id}_in.wav"
+      out_path="#{TMPFILE_DIRECTORY}/#{id}_out.wav"
+      sound.write(in_path)
+      rubberband_cli_wrapper(in_path,out_path,args)
+      sound_out=Sound.from_file(out_path)
+      FileUtils.rm(in_path)
+      FileUtils.rm(out_path)
+      return sound_out
+    rescue ex
+      if ex.message.to_s.includes? "Error executing process"
+        puts "WARNING: rubberband could not be found. Please make sure it is installed, or is located in your system $PATH"
+      else
+        puts ex.message
+      end
+      return sound
+    end
+  end
 
   ##########################
   # slice operations
@@ -151,8 +149,7 @@ module Sounding
       @samples = slice
     end
 
-    # #SFInfo parameters
-    #
+    # SFInfo parameters
     def frames
       @info.frames
     end
@@ -184,6 +181,16 @@ module Sounding
 
     def seekable
       @info.seekable
+    end
+    
+    def info
+      @info
+    end
+    
+    def each
+      (0...@info.frames).each do |iframe|
+        yield @samples[iframe*@info.channels...iframe*@info.channels+@info.channels]
+      end
     end
 
     ##########################################
@@ -221,6 +228,22 @@ module Sounding
     def shift_by_ms(time : Float64 | Float32 | Int32)
       samplecount = (time*@info.samplerate/1000).to_i
       shift_by_samples(samplecount)
+    end
+    
+    ####################################
+    #rubberband-based operations
+    ####################################
+    def rubberband(args : Array(String))
+      newfile=rubberband_temp(self,args)
+      @samples=newfile.samples
+      @info=newfile.info
+    end
+    def shift_pitch(semitones : Float64 | Float32 | Int64 | Int32,preserve_formants : Bool=false)
+      args=["-p","#{semitones}"]
+      if preserve_formants
+        args<<"-F"
+      end
+      rubberband(args)
     end
   end
 end

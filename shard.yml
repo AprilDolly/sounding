@@ -7,7 +7,8 @@ authors:
 dependencies:
   soundfile:
     github: skinnyjames-forks/soundfile
-
+  quartz:
+    github: astellon/quartz
 crystal: 1.3.2
 
 license: GNU GPL
