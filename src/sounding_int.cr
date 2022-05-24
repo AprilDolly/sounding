@@ -35,67 +35,88 @@ module Sounding
     end
   end
 
-  
+  ##########################
+  # slice operations
+  ##########################
+
+  # sum two slices
+  def add_slices(slc1 : Slice(Int32), slc2 : Slice(Int32))
+    new_size = slc1.size
+    if slc1.size < slc2.size
+      # slc2 is larger
+      new_size = slc2.size
+    end
+    slc_new = Slice.new(new_size, Int32.new(0))
+    (0...slc1.size).each do |i|
+      slc_new[i] += slc1[i]
+    end
+    (0...slc2.size).each do |i|
+      if (slc_new[i] > 0 && slc2[i] < 0) || (slc_new[i] < 0 && slc2[i] > 0)
+        slc_new[i] += slc2[i]
+      elsif slc_new[i].abs > INT_MAX - slc2[i].abs
+        if slc_new[i] > 0
+          slc_new[i] = INT_MAX
+        elsif slc_new[i] < 0
+          slc_new[i] = -1*INT_MAX
+        end
+      else # sometimes the above statements don't add, and im lazy, so screw it
+        begin
+          slc_new[i] += slc2[i]
+        rescue
+          if slc_new[i] > 0
+            slc_new[i] = INT_MAX
+          elsif slc_new[i] < 0
+            slc_new[i] = -1*INT_MAX
+          end
+        end
+      end
+    end
+    return slc_new
+  end
+
+  # concatenate 2 slices
+  def concatenate_slices(slc1 : Slice(Int32), slc2 : Slice(Int32))
+    new_size = slc1.size + slc2.size
+    slc_new = Slice.new(new_size, Int32.new(0))
+    (0...slc1.size).each do |i|
+      slc_new[i] += slc1[i]
+    end
+    (0...slc2.size).each do |i|
+      slc_new[i + slc1.size] += slc2[i]
+    end
+    return slc_new
+  end
 
   ##############################
   # main Sound class
   ##############################
-  class Sound(T)
-    def initialize(@samples : Slice, @info : LibSndFile::SFInfo)
-      @dtype=T
+  class Sound
+    def initialize(@samples : Slice(Int32), @info : LibSndFile::SFInfo)
     end
-    
+
     # create new Sound object from file
-    def self.from_file(filepath : String,type : Class=Int32)
-      acceptable_classes=[Int16,Int32,Float32,Float64]
-      if !acceptable_classes.includes?(type)
-        raise "type parameter must be one of the following: #{acceptable_classes}"
-      end
+    def self.from_file(filepath : String)
       SFile.open(filepath, :read) do |f|
-        if type==Int32
-          ptr = Slice.new(f.size, Int32.new(0))
-          f.read_int(ptr, f.size)
-          return Sound(Int32).new(ptr.clone, f.info)
-        elsif type==Int16
-          ptr = Slice.new(f.size, Int16.new(0))
-          f.read_short(ptr,f.size)
-          return Sound(Int16).new(ptr.clone, f.info)
-        elsif type==Float32
-          ptr = Slice.new(f.size, Float32.new(0))
-          f.read_float(ptr,f.size)
-          return Sound(Float32).new(ptr.clone, f.info)
-        elsif type==Float64
-          ptr = Slice.new(f.size, Float64.new(0))
-          f.read_double(ptr,f.size)
-          return Sound(Float64).new(ptr.clone, f.info)
-        end
+        ptr = Slice.new(f.size, Int32.new(0))
+        f.read_int(ptr, f.size)
+        return new(ptr.clone, f.info)
       end
-      sf_info=LibSndFile::SFInfo.new
-      return Sound(Int32).new(Slice.new(1,Int32.new(0)),sf_info)
     end
 
     # write sound object to file
     def write(filepath : String)
       SFile.open(filepath, :write, @info) do |f|
-        if T==Int32
-          f.write_int(change_slice_type(@samples,Int32), @samples.size)
-        elsif T==Int16
-          f.write_short(change_slice_type(@samples,Int16),@samples.size)
-        elsif T==Float32
-          f.write_float(change_slice_type(@samples,Float32),@samples.size)
-        elsif T==Float64
-          f.write_double(change_slice_type(@samples,Float64),samples.size)
-        end
+        f.write_int(@samples, @samples.size)
       end
     end
 
     # create new Sound object from slice
-    def self.from_slice(slice : Slice, sr : T, n_channels = 2)
+    def self.from_slice(slice : Slice(Int32), sr : Int32, n_channels = 2)
       sfinfo = LibSndFile::SFInfo.new
       sfinfo.frames = slice.size/n_channels
       sfinfo.samplerate = sr
       sfinfo.channels = n_channels
-      return Sound(typeof(slice[0])).new(slice, sfinfo)
+      return new(slice, sfinfo)
     end
 
     # superimposition
@@ -142,7 +163,7 @@ module Sounding
       @samples
     end
 
-    def samples=(slice : Slice(T))
+    def samples=(slice : Slice(Int32))
       @samples = slice
     end
 
@@ -157,7 +178,7 @@ module Sounding
     end
 
     # set sample rate and resample the sound object
-    def samplerate=(new_sr : T)
+    def samplerate=(new_sr : Int32)
       if new_sr != @info.samplerate
         @samples = slice_resample(@samples, @info.channels, @info.samplerate, new_sr)
         @info.samplerate = new_sr
@@ -195,7 +216,7 @@ module Sounding
     ##########################################
     def to_mono
       frame_count = (@samples.size/@info.channels).to_i
-      new_slc = Slice.new(frame_count, T.new(0))
+      new_slc = Slice.new(frame_count, Int32.new(0))
       (0...frame_count).each do |iframe|
         new_val = 0
         (0...@channels).each do |ichannel|
@@ -209,9 +230,9 @@ module Sounding
     ##########################################
     # position operations, i guess
     ##########################################
-    def shift_by_samples(samplecount : T)
+    def shift_by_samples(samplecount : Int32)
       if samplecount >= 0
-        @samples = concatenate_slices(Slice.new(samplecount*@info.channels, T.new(0)), @samples)
+        @samples = concatenate_slices(Slice.new(samplecount*@info.channels, Int32.new(0)), @samples)
       else
         raise "Shifting by negative amount of time has not been implemented"
       end
@@ -222,7 +243,7 @@ module Sounding
       shift_by_samples(samplecount)
     end
 
-    def shift_by_ms(time : Float64 | Float32 | T)
+    def shift_by_ms(time : Float64 | Float32 | Int32)
       samplecount = (time*@info.samplerate/1000).to_i
       shift_by_samples(samplecount)
     end
@@ -235,73 +256,12 @@ module Sounding
       @samples=newfile.samples
       @info=newfile.info
     end
-    def shift_pitch(semitones : Float64 | Float32 | Int64 | T,preserve_formants : Bool=false)
+    def shift_pitch(semitones : Float64 | Float32 | Int64 | Int32,preserve_formants : Bool=false)
       args=["-p","#{semitones}"]
       if preserve_formants
         args<<"-F"
       end
       rubberband(args)
-    end
-    
-    ##########################
-    # slice operations
-    ##########################
-
-    # sum two slices
-    def add_slices(slc1 : Slice(T), slc2 : Slice(T))
-      new_size = slc1.size
-      if slc1.size < slc2.size
-        # slc2 is larger
-        new_size = slc2.size
-      end
-      slc_new = Slice.new(new_size, T.new(0))
-      (0...slc1.size).each do |i|
-        slc_new[i] += slc1[i]
-      end
-      (0...slc2.size).each do |i|
-        if (slc_new[i] > 0 && slc2[i] < 0) || (slc_new[i] < 0 && slc2[i] > 0)
-          slc_new[i] += slc2[i]
-        elsif slc_new[i].abs > INT_MAX - slc2[i].abs
-          if slc_new[i] > 0
-            slc_new[i] = INT_MAX
-          elsif slc_new[i] < 0
-            slc_new[i] = -1*INT_MAX
-          end
-        else # sometimes the above statements don't add, and im lazy, so screw it
-          begin
-            slc_new[i] += slc2[i]
-          rescue
-            if slc_new[i] > 0
-              slc_new[i] = INT_MAX
-            elsif slc_new[i] < 0
-              slc_new[i] = -1*INT_MAX
-            end
-          end
-        end
-      end
-      return slc_new
-    end
-
-    # concatenate 2 slices
-    def concatenate_slices(slc1 : Slice(T), slc2 : Slice(T))
-      new_size = slc1.size + slc2.size
-      slc_new = Slice.new(new_size, T.new(0))
-      (0...slc1.size).each do |i|
-        slc_new[i] += slc1[i]
-      end
-      (0...slc2.size).each do |i|
-        slc_new[i + slc1.size] += slc2[i]
-      end
-      return slc_new
-    end
-    
-    # change type of slice
-    def change_slice_type(input : Slice,type : Class)
-      output=Slice.new(input.size,type.new(0))
-      (0...input.size).each do |i|
-        output[i]=type.new(input[i])
-      end
-      return output
     end
   end
 end
